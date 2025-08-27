@@ -3,7 +3,7 @@ use tonic::transport::{Endpoint};
 use protobuf::proto;
 
 mod grpc_pb {
-    grpc::include_generated_photo!("generated", "routeguide");
+    grpc::include_generated_proto!("generated", "routeguide");
 }
 
 use grpc_pb::{
