@@ -5,43 +5,59 @@ use serde::Deserialize;
 use std::fs::File;
 use protobuf::proto;
 
-// /////////////////////////////////////////////////////////////////////////
-// Codelab Hint: Bring the generated code into scope.
-// /////////////////////////////////////////////////////////////////////////
+mod grpc_pb {
+    grpc::include_generated_proto!("generated", "routeguide");
+}
+
+pub use grpc_pb::{
+    route_guide_server::{RouteGuideServer, RouteGuide},
+    Point, Feature,
+};
 
 #[derive(Debug)]
 pub struct RouteGuideService {
-    ///////////////////////////////////////////////////////////////////////////
-    // Codelab Hint: Define the RouteGuideService struct.
-    ///////////////////////////////////////////////////////////////////////////
+    features: Vec<Feature>,
 }
 
 #[tonic::async_trait]
 impl RouteGuide for RouteGuideService {
     async fn get_feature(&self, request: Request<Point>) -> Result<Response<Feature>, Status> {
         // /////////////////////////////////////////////////////////////////////////
-        // Codelab Hint: Logic for GetFeature will be added here.
-        //
         // Steps include:
         // -   Loop through server's features to find the feature that matches the
         //     point.
         // -   Return the feature if found.
         // -   Return an unnamed feature if no feature is found.
         // /////////////////////////////////////////////////////////////////////////
+        println!("GetFeature = {:?}", request);
+        let requested_point = request.get_ref();
+        for feature in self.features.iter() {
+            if feature.location().latitude() == requested_point.latitude() {
+                if feature.location().longitude() == requested_point.longitude() {
+                    return Ok(Response::new(feature.clone()))
+                };
+            };
+        }
+        Ok(Response::new(Feature::default()))
     }
 }
-
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///////////////////////////////////////////////////////////////////////////
-	// Codelab Hint: Logic for starting up a gRPC Server will be added here.
-	//
 	// Steps include:
 	//  -   Specify the port we want to use to listen for client requests using
 	//  -   Create an instance of the gRPC server using RouteGuideServer::new().
 	//  -   Register our service implementation with the server.
 	///////////////////////////////////////////////////////////////////////////
+	let addr = "[::1]:10000".parse().unwrap();
+	println!("RouteGuideServer listening on: {addr}");
+	let route_guide = RouteGuideService {
+	    features: load(),
+    };
+    let svc = RouteGuideServer::new(route_guide);
+    Server::builder().add_service(svc).serve(addr).await?;
+    Ok(())
 }
 
 #[derive(Debug, Deserialize)]
